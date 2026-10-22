@@ -1,1 +1,2 @@
- 
+ latest_music=https://files.catbox.moe/zp30el.mp3
+popular_music=https://files.catbox.moe/zp30el.mp3

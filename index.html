@@ -1,553 +1,640 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>طقس خربة أفيق - ذمار</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0a0e17;
-            --bg-secondary: #131a26;
-            --bg-card: #1a2332;
-            --bg-card-hover: #212d40;
-            --text-primary: #e8edf5;
-            --text-secondary: #8b9bb4;
-            --accent-blue: #4a90d9;
-            --accent-cyan: #5bc0de;
-            --accent-gold: #f0c040;
-            --border-color: #2a3547;
-            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            --warning-bg: rgba(240, 192, 64, 0.15);
-            --warning-border: #f0c040;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Cairo', sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            overflow-x: hidden;
-            /* خلفية فلكية (Milky Way) من الإنترنت */
-            background-image: 
-                linear-gradient(rgba(10, 14, 23, 0.92), rgba(10, 14, 23, 0.92)),
-                url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2000&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-        }
-
-        .container { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
-
-        /* شريط التحذير اليومي */
-        .daily-warning {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--warning-bg);
-            border: 2px solid var(--warning-border);
-            border-radius: 12px;
-            padding: 12px 16px;
-            margin-bottom: 20px;
-            animation: blinkWarning 2s infinite ease-in-out;
-            box-shadow: 0 0 15px rgba(240, 192, 64, 0.2);
-        }
-        @keyframes blinkWarning {
-            0%, 100% { opacity: 1; box-shadow: 0 0 15px rgba(240, 192, 64, 0.3); }
-            50% { opacity: 0.7; box-shadow: 0 0 5px rgba(240, 192, 64, 0.1); }
-        }
-        .warning-icon {
-            font-size: 1.8rem;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        .warning-content { flex: 1; }
-        .warning-title { font-size: 0.85rem; font-weight: 700; color: #ffcc00; margin-bottom: 4px; }
-        .warning-text { font-size: 0.9rem; color: var(--text-primary); line-height: 1.4; }
-
-        /* الهيدر */
-        .header { text-align: center; padding: 20px 0; }
-        .header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
-        .header .location { font-size: 0.95rem; color: var(--text-secondary); margin-bottom: 4px; }
-        .header .coords { font-size: 0.8rem; color: var(--text-secondary); direction: ltr; font-family: monospace; opacity: 0.7; }
-        .date-badge { display: inline-block; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 6px 20px; font-size: 0.85rem; color: var(--text-secondary); margin-top: 12px; }
-
-        /* شريط الأزرار السريع */
-        .quick-actions { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
-        .action-btn {
-            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px;
-            padding: 10px 20px; color: var(--text-primary); font-family: 'Cairo', sans-serif;
-            font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;
-        }
-        .action-btn:hover { background: var(--bg-card-hover); border-color: var(--accent-cyan); }
-
-        /* النوافذ المنبثقة (Modals) */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1000;
-            justify-content: center; align-items: center;
-        }
-        .modal-overlay.active { display: flex; }
-        .modal-content {
-            background: var(--bg-secondary); border: 1px solid var(--border-color);
-            border-radius: 16px; padding: 24px; width: 90%; max-width: 500px;
-            max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow);
-            position: relative;
-        }
-        .modal-close { position: absolute; top: 15px; left: 15px; background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; }
-        .modal-title { font-size: 1.2rem; font-weight: 700; color: var(--accent-cyan); margin-bottom: 16px; text-align: center; }
-
-        /* محتوى المقرانات */
-        .maqran-item { background: var(--bg-card); border-radius: 10px; padding: 12px; margin-bottom: 10px; border-right: 4px solid var(--accent-gold); }
-        .maqran-item h4 { font-size: 1rem; color: var(--accent-gold); margin-bottom: 4px; }
-        .maqran-item p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 2px; }
-        .maqran-item .highlight { color: var(--text-primary); font-weight: 600; }
-
-        /* محتوى الأبراج */
-        .zodiac-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .zodiac-card { background: var(--bg-card); border-radius: 10px; padding: 15px; text-align: center; border: 1px solid var(--border-color); }
-        .zodiac-card .z-icon { font-size: 2rem; margin-bottom: 8px; display: block; }
-        .zodiac-card .z-name { font-size: 0.9rem; font-weight: 600; color: var(--accent-cyan); }
-        .zodiac-card .z-date { font-size: 0.75rem; color: var(--text-secondary); }
-
-        /* باقي التصميم (بطاقات الطقس والمصادر) */
-        .section-title { font-size: 1.1rem; font-weight: 600; margin: 30px 0 14px; display: flex; align-items: center; gap: 8px; }
-        .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        @media (max-width: 600px) { .weather-grid { grid-template-columns: 1fr; } .zodiac-grid { grid-template-columns: 1fr; } }
-        .weather-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
-        .card-header .day-label { font-size: 1rem; font-weight: 600; color: var(--accent-cyan); }
-        .card-header .day-date { font-size: 0.8rem; color: var(--text-secondary); }
-        .temp-display { text-align: center; margin-bottom: 18px; }
-        .temp-main { font-size: 3rem; font-weight: 700; line-height: 1; }
-        .temp-main .unit { font-size: 1.2rem; color: var(--text-secondary); font-weight: 400; }
-        .temp-range { display: flex; justify-content: center; gap: 16px; margin-top: 8px; font-size: 0.9rem; color: var(--text-secondary); }
-        .temp-range .min { color: var(--accent-blue); }
-        .temp-range .max { color: var(--accent-gold); }
-        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .detail-item { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border-radius: 10px; padding: 10px 12px; font-size: 0.82rem; }
-        .detail-item .detail-icon { font-size: 1.1rem; }
-        .detail-item .detail-info { display: flex; flex-direction: column; }
-        .detail-item .detail-label { color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 2px; }
-        .detail-item .detail-value { color: var(--text-primary); font-weight: 600; font-size: 0.85rem; }
-        .sources-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-        @media (max-width: 600px) { .sources-grid { grid-template-columns: repeat(3, 1fr); } }
-        .source-btn { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.2s; color: var(--text-primary); font-family: 'Cairo', sans-serif; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .source-btn:active { transform: scale(0.95); }
-        .source-btn.active { border-color: var(--accent-cyan); background: var(--bg-card-hover); }
-        .source-btn .source-icon { font-size: 1.6rem; }
-        .source-btn .source-name { font-weight: 600; font-size: 0.75rem; }
-        .forecast-panel { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; margin-top: 16px; display: none; }
-        .forecast-panel.visible { display: block; }
-        .forecast-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
-        .forecast-panel-header h3 { font-size: 1rem; font-weight: 600; color: var(--accent-cyan); }
-        .forecast-list { display: flex; flex-direction: column; gap: 8px; }
-        .forecast-row { display: grid; grid-template-columns: 70px 1fr 80px 80px 70px; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg-secondary); border-radius: 10px; font-size: 0.8rem; }
-        .forecast-row .f-day { font-weight: 600; color: var(--accent-cyan); }
-        .forecast-row .f-date { color: var(--text-secondary); font-size: 0.75rem; }
-        .forecast-row .f-temp { color: var(--text-primary); font-weight: 600; text-align: center; }
-        .forecast-row .f-rain { color: var(--accent-blue); text-align: center; font-size: 0.75rem; }
-        .forecast-row .f-wind { color: var(--text-secondary); font-size: 0.72rem; text-align: center; }
-        .loading-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
-        .loading-state .spinner { width: 32px; height: 32px; border: 3px solid var(--border-color); border-top-color: var(--accent-cyan); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .error-state { text-align: center; padding: 20px; color: #e74c3c; font-size: 0.85rem; background: rgba(231, 76, 60, 0.1); border-radius: 10px; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-secondary); line-height: 1.8; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شاهد VIP - مكتبة المسلسلات والأفلام</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg-dark:#090d16;--bg-card:#131b2e;--accent:#e50914;--accent-blue:#2563eb;--gold:#ffb703;--text-main:#f8fafc;--text-muted:#94a3b8;--border-color:rgba(255,255,255,0.08)}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Cairo',sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:#070b14;color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden;position:relative}
+body::before{content:"";position:fixed;inset:-35px;z-index:-3;background-image:linear-gradient(rgba(5,9,18,.84),rgba(5,9,18,.93)),var(--page-bg-image,none);background-size:cover;background-position:center;filter:blur(18px);transform:scale(1.08);transition:background-image 1s ease;opacity:.78}
+body::after{content:"";position:fixed;inset:0;z-index:-2;background:radial-gradient(circle at 50% 15%,rgba(37,99,235,.10),transparent 45%),rgba(5,9,18,.28);pointer-events:none}
+header{background:linear-gradient(180deg,#111827 0%,var(--bg-dark) 100%);padding:1.5rem 1rem 1rem;text-align:center;border-bottom:1px solid var(--border-color);position:sticky;top:0;z-index:100;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.brand{font-size:2rem;font-weight:900;color:#fff;margin-bottom:.3rem;cursor:pointer;user-select:none}
+.brand span{color:var(--accent);text-shadow:0 0 12px rgba(229,9,20,.5)}
+.sub-brand{color:var(--text-muted);font-size:.9rem;margin-bottom:1rem}
+.search-box{max-width:650px;margin:0 auto;position:relative}
+.search-input{width:100%;padding:.9rem 1.4rem;border-radius:30px;border:2px solid var(--border-color);background:rgba(19,27,46,0.9);color:#fff;font-size:1rem;outline:none;transition:all .3s ease;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.search-input:focus{border-color:var(--accent-blue);box-shadow:0 0 20px rgba(37,99,235,.35)}
+main{flex:1;max-width:1300px;width:100%;margin:1.2rem auto;padding:0 .8rem}
+.home-notice{max-width:900px;margin:0 auto 1rem;padding:.7rem .9rem;border:1px solid rgba(251,191,36,.25);border-radius:14px;background:rgba(251,191,36,.07);color:#f4d58d;font-size:.76rem;line-height:1.7;text-align:center}
+.home-title{text-align:center;margin:.7rem 0 1rem;font-size:1.1rem;font-weight:900}
+.quick-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;max-width:900px;margin:0 auto 1.2rem}
+.quick-card{min-height:90px;border-radius:18px;border:1px solid rgba(255,255,255,.09);background:linear-gradient(145deg,rgba(19,27,46,.95),rgba(10,16,29,.95));box-shadow:0 10px 25px rgba(0,0,0,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;color:#fff;cursor:pointer;padding:.6rem;text-align:center;transition:transform .25s ease,border-color .25s ease;font-family:inherit}
+.quick-card:hover{transform:translateY(-4px);border-color:rgba(96,165,250,.45)}
+.quick-card .qi{font-size:1.6rem}
+.quick-card .qn{font-size:.82rem;font-weight:900}
+.category-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;max-width:900px;margin:0 auto}
+.category-card{min-height:125px;border-radius:18px;border:1px solid rgba(255,255,255,.09);background:linear-gradient(145deg,rgba(19,27,46,.90),rgba(10,16,29,.90));box-shadow:0 10px 25px rgba(0,0,0,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;color:#fff;cursor:pointer;padding:.55rem;text-align:center;transition:transform .25s ease,border-color .25s ease;font-family:inherit}
+.category-card:hover{transform:translateY(-5px);border-color:rgba(96,165,250,.45)}
+.category-icon{width:50px;height:50px;border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:rgba(37,99,235,.14);border:1px solid rgba(96,165,250,.16)}
+.category-name{font-size:.82rem;font-weight:900;line-height:1.35}
+.category-count{font-size:.68rem;color:var(--text-muted)}
+.home-hidden{display:none!important}
+.library-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.8rem}
+.back-home-btn{border:1px solid var(--border-color);background:rgba(255,255,255,.06);color:#fff;border-radius:12px;padding:.45rem .8rem;cursor:pointer;font-weight:800;font-family:inherit}
+.back-home-btn:hover{background:rgba(37,99,235,.22)}
+.library-title{font-weight:900;font-size:1rem}
+.filter-bar{display:flex;gap:6px;margin-bottom:.8rem;overflow-x:auto;padding:2px;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-tab{flex-shrink:0;background:rgba(255,255,255,.05);border:1px solid var(--border-color);color:var(--text-muted);padding:.4rem .9rem;border-radius:12px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .2s}
+.filter-tab.active{background:var(--accent-blue);color:#fff;border-color:var(--accent-blue)}
+.filter-panel{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.9rem;padding:.6rem;background:rgba(19,27,46,.6);border-radius:12px;border:1px solid var(--border-color);max-height:160px;overflow-y:auto}
+.filter-panel.hidden{display:none}
+.filter-chip{background:rgba(255,255,255,.06);border:1px solid var(--border-color);color:#fff;padding:4px 11px;border-radius:12px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s}
+.filter-chip.active{background:var(--accent-blue);border-color:var(--accent-blue)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
+@media (min-width:640px){.grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}}
+@media (min-width:1000px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.card{background:var(--bg-card);border-radius:12px;overflow:hidden;border:1px solid var(--border-color);cursor:pointer;transition:transform .3s ease,box-shadow .3s ease;display:flex;flex-direction:column;position:relative}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 30px rgba(0,0,0,.6);border-color:rgba(37,99,235,.4)}
+.poster-wrapper{width:100%;aspect-ratio:2/3;background:#1a243a;position:relative;overflow:hidden}
+.poster-wrapper::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.22),transparent 35%);pointer-events:none}
+.poster-img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease,opacity .25s ease;opacity:1}
+.poster-img.is-loading{opacity:.42}
+.poster-img.loaded{opacity:1}
+.card:hover .poster-img{transform:scale(1.035)}
+.badge-type{position:absolute;top:5px;right:5px;background:rgba(15,23,42,.85);backdrop-filter:blur(4px);color:#60a5fa;font-size:.6rem;font-weight:800;padding:2px 5px;border-radius:5px;border:1px solid rgba(96,165,250,.3);z-index:3}
+.rating-tag{position:absolute;bottom:5px;left:5px;background:rgba(0,0,0,.8);color:var(--gold);font-size:.65rem;font-weight:800;padding:2px 5px;border-radius:5px;z-index:3}
+.card-info{padding:.5rem .3rem;display:flex;flex-direction:column;gap:2px;flex:1}
+.card-title{font-size:.72rem;font-weight:800;color:#f8fafc;text-align:center;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;border-top:1px solid var(--border-color);padding-top:.4rem}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:1000;padding:1rem}
+.modal-overlay.active{opacity:1;pointer-events:auto}
+.modal-body{background:#111827;border:1px solid var(--border-color);border-radius:20px;max-width:600px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem;position:relative;transform:scale(.9);transition:transform .3s ease;box-shadow:0 20px 50px rgba(0,0,0,.8)}
+.modal-overlay.active .modal-body{transform:scale(1)}
+.close-btn{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.1);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.close-btn:hover{background:rgba(255,255,255,.25)}
+.modal-header{display:flex;gap:1rem;margin-bottom:1rem}
+.modal-poster{width:110px;border-radius:12px;aspect-ratio:2/3;object-fit:cover;flex-shrink:0;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+.modal-details{display:flex;flex-direction:column;justify-content:center;gap:6px}
+.modal-title{font-size:1.15rem;font-weight:800;color:#fff;line-height:1.3}
+.modal-meta{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text-muted);flex-wrap:wrap}
+.modal-meta-badge{background:var(--accent-blue);color:#fff;padding:2px 7px;border-radius:6px;font-weight:700}
+.modal-overview{font-size:.92rem;line-height:1.65;color:#cbd5e1;margin-top:.9rem;background:rgba(255,255,255,.03);padding:.9rem;border-radius:12px;border:1px solid rgba(255,255,255,.05)}
+.no-results{text-align:center;grid-column:1/-1;padding:3rem 1rem;color:var(--text-muted);font-size:1rem}
+.mute-btn{position:fixed;bottom:15px;left:15px;width:46px;height:46px;border-radius:50%;background:rgba(37,99,235,.85);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:1.2rem;cursor:pointer;z-index:500;display:none;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(0,0,0,.4);font-family:inherit}
+.mute-btn.visible{display:flex}
+.mute-btn.muted{background:rgba(100,116,139,.85)}
+.contact-section{margin:1.5rem auto 2rem;max-width:650px;text-align:center}
+.contact-main-btn{border:1px solid var(--border-color);background:rgba(19,27,46,.9);color:#fff;padding:.7rem 1.3rem;border-radius:24px;font-weight:900;cursor:pointer;font-family:inherit}
+.contact-panel{display:grid;gap:.55rem;margin-top:.7rem}
+.contact-item{border:1px solid var(--border-color);background:rgba(19,27,46,.82);color:#fff;padding:.7rem 1rem;border-radius:13px;text-align:right;text-decoration:none;font-family:inherit}
+.hours-panel{display:grid;gap:.25rem;padding:.7rem;color:var(--text-muted);font-size:.8rem;background:rgba(0,0,0,.18);border-radius:10px}
+footer{text-align:center;padding:1.5rem;font-size:.8rem;color:var(--text-muted);border-top:1px solid var(--border-color);margin-top:auto}
+@media (max-width:380px){.category-card{min-height:110px}.category-icon{width:44px;height:44px;font-size:1.4rem}.category-name{font-size:.74rem}.card-title{font-size:.66rem}}
+</style>
 </head>
 <body>
 
-    <!-- شريط التحذير اليومي -->
-    <div class="daily-warning" id="warningBar">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-content">
-            <div class="warning-title">تحذير اليوم</div>
-            <div class="warning-text" id="warningText">جاري تحميل التحذير...</div>
-        </div>
+<header>
+  <div class="brand" onclick="goHome()">🎬 مكتبة <span>شاهد VIP</span></div>
+  <div class="sub-brand">ابحث مباشرة في كافة المسلسلات والأنمي والأفلام</div>
+  <div class="search-box">
+    <input type="text" id="searchInput" class="search-input" placeholder="🔍 اكتب اسم العمل للبحث الفوري..." oninput="onSearchInput()">
+  </div>
+</header>
+
+<div id="homeView">
+  <main>
+    <div class="home-notice">⚠️ <strong>ملاحظة:</strong> تُجلب الصور والأوصاف تلقائياً من الإنترنت وقد تحدث أخطاء بسيطة.</div>
+    <div class="quick-actions">
+      <button class="quick-card" onclick="showSpecial('latest')"><span class="qi">🆕</span><span class="qn">أحدث الإضافات</span></button>
+      <button class="quick-card" onclick="showSpecial('popular')"><span class="qi">🔥</span><span class="qn">الأكثر مشاهدة</span></button>
     </div>
-
-    <div class="container">
-        <!-- الهيدر -->
-        <div class="header">
-            <h1>🌤️ طقس خربة أفيق</h1>
-            <div class="location">مديرية ميفعة عنس - محافظة ذمار - اليمن</div>
-            <div class="coords">14.5500°N, 44.5833°E</div>
-            <div class="date-badge" id="currentDate">جاري تحميل التاريخ...</div>
+    <div class="home-title">اختر المكتبة التي تريد تصفحها</div>
+    <div class="category-grid" id="categoryGrid"></div>
+    <section class="contact-section">
+      <button class="contact-main-btn" onclick="toggleContact()">📞 تواصل بنا</button>
+      <div id="contactPanel" class="contact-panel home-hidden">
+        <a class="contact-item" href="https://wa.me/967780652732" target="_blank" rel="noopener">💬 واتساب — 00967780652732</a>
+        <div class="contact-item">📍 <strong>عنواننا:</strong> أمام مدرسة تاج عنس جوار بقالة القاضي</div>
+        <button class="contact-item" onclick="toggleHours()">🕘 أوقات الدوام</button>
+        <div id="hoursPanel" class="hours-panel home-hidden">
+          <div>الأحد: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
+          <div>الاثنين: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
+          <div>الثلاثاء: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
+          <div>الأربعاء: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
+          <div>الخميس: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
+          <div>الجمعة: مغلق</div>
+          <div>السبت: 9 صباحاً – 12 ظهراً، 3 عصراً – 9 مساءً</div>
         </div>
+      </div>
+    </section>
+  </main>
+</div>
 
-        <!-- الأزرار السريعة -->
-        <div class="quick-actions">
-            <button class="action-btn" onclick="openModal('maqranModal')">🌱 المقرانات والأشهر الزراعية</button>
-            <button class="action-btn" onclick="openModal('zodiacModal')">🔭 الأبراج الفلكية</button>
-        </div>
-
-        <!-- توقعات اليوم والغد -->
-        <div class="section-title">📅 توقعات اليوم والغد</div>
-        <div class="weather-grid" id="weatherGrid">
-            <div class="loading-state" style="grid-column: 1/-1;"><div class="spinner"></div>جاري الاتصال بمركز البيانات...</div>
-        </div>
-
-        <!-- المصادر العالمية -->
-        <div class="section-title">🌍 المصادر العالمية</div>
-        <div class="sources-grid" id="sourcesGrid">
-            <button class="source-btn" onclick="loadForecast('YR.no')"><span class="source-icon">❄️</span><span class="source-name">YR.no</span></button>
-            <button class="source-btn active" onclick="loadForecast('Open-Meteo')"><span class="source-icon">☁️</span><span class="source-name">Open-Meteo</span></button>
-            <button class="source-btn" onclick="loadForecast('AccuWeather')"><span class="source-icon">⚙️</span><span class="source-name">AccuWeather</span></button>
-            <button class="source-btn" onclick="loadForecast('Weather.com')"><span class="source-icon">🌧️</span><span class="source-name">Weather.com</span></button>
-            <button class="source-btn" onclick="loadForecast('Windy')"><span class="source-icon">💨</span><span class="source-name">Windy</span></button>
-        </div>
-
-        <!-- لوحة التوقعات 10 أيام -->
-        <div class="forecast-panel" id="forecastPanel">
-            <div class="forecast-panel-header">
-                <h3 id="forecastTitle">توقعات 10 أيام</h3>
-                <span class="source-tag" id="forecastSourceTag" style="font-size:0.75rem; background:var(--bg-secondary); padding:4px 12px; border-radius:12px; color:var(--text-secondary);">Open-Meteo</span>
-            </div>
-            <div class="forecast-list" id="forecastList"></div>
-        </div>
-
-        <!-- التذييل -->
-        <div class="footer">
-            تطوير و انشاء الصفحة من قبل / عبد الكريم محمد الاشول
-            <br>
-            <span style="color: var(--accent-gold); font-weight: bold; font-size: 0.9rem;">احتمال الخطاء وارد نرجو أخذ الحيطة و الحذر في فصل الشتاء</span>
-        </div>
+<div id="libraryView" class="home-hidden">
+  <main>
+    <div class="library-head">
+      <button class="back-home-btn" onclick="goHome()">⌂ الرئيسية</button>
+      <div id="libraryTitle" class="library-title">المكتبة</div>
     </div>
-
-    <!-- النافذة المنبثقة: المقرانات -->
-    <div class="modal-overlay" id="maqranModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('maqranModal')">&times;</button>
-            <div class="modal-title">🌱 المقرانات والأشهر الزراعية</div>
-            <div id="maqranContent">
-                <div class="loading-state"><div class="spinner"></div>جاري حساب المقرانة...</div>
-            </div>
-        </div>
+    <div class="filter-bar" id="filterBar">
+      <button class="filter-tab active" data-mode="name" onclick="setFilterMode('name')">🔍 بالاسم</button>
+      <button class="filter-tab" data-mode="genre" onclick="setFilterMode('genre')">🎭 حسب النوع</button>
+      <button class="filter-tab" data-mode="letter" onclick="setFilterMode('letter')">🔤 بالحروف</button>
     </div>
+    <div class="filter-panel hidden" id="genrePanel"></div>
+    <div class="filter-panel hidden" id="letterPanel"></div>
+    <div class="grid" id="contentGrid"></div>
+  </main>
+</div>
 
-    <!-- النافذة المنبثقة: الأبراج -->
-    <div class="modal-overlay" id="zodiacModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal('zodiacModal')">&times;</button>
-            <div class="modal-title">🔭 الأبراج الفلكية الحالية</div>
-            <div class="zodiac-grid" id="zodiacContent"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-body" onclick="event.stopPropagation()">
+    <button class="close-btn" onclick="closeModal(null)">✕</button>
+    <div class="modal-header">
+      <img id="modalPoster" src="" class="modal-poster" alt="poster">
+      <div class="modal-details">
+        <h2 id="modalTitle" class="modal-title"></h2>
+        <div class="modal-meta">
+          <span id="modalCategory" class="modal-meta-badge"></span>
+          <span id="modalRating" style="color:var(--gold);font-weight:700;">⭐ --</span>
+          <span id="modalYear"></span>
         </div>
+        <div id="modalGenres" style="color:#94a3b8;font-size:.78rem;"></div>
+      </div>
     </div>
+    <div class="modal-overview" id="modalOverview">جاري تحميل التفاصيل...</div>
+  </div>
+</div>
 
-    <script>
-        // ================= الإعدادات الأساسية =================
-        const LAT = 14.5500;
-        const LON = 44.5833;
-        const TIMEZONE = 'Asia/Aden';
-        let cachedData = null;
+<button class="mute-btn" id="muteBtn" onclick="toggleMute()">🔊</button>
 
-        // دالة مساعدة لتنسيق التواريخ
-        function getFormattedDate(dateObj, short = false) {
-            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-            const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-            if (short) return `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
-            return `${days[dateObj.getDay()]}، ${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
-        }
+<footer>جميع الحقوق محفوظة &copy; 2026 - مكتبة شاهد VIP</footer>
 
-        // ================= شريط التحذير اليومي =================
-        // هذا الجزء يقوم بقراءة ملف warning.txt 
-        // يمكنك تعديل هذا الملف من هاتفك يومياً عبر منصة GitHub
-        async function loadDailyWarning() {
-            const warningTextEl = document.getElementById('warningText');
-            const warningBar = document.getElementById('warningBar');
-            try {
-                // محاولة قراءة ملف التحذير الخارجي
-                const response = await fetch('warning.txt');
-                if (response.ok) {
-                    const text = await response.text();
-                    // التنسيق المتوقع داخل الملف: [اللون]|[النص]
-                    // مثال: #ff9900|درجة الحرارة العظمى غداً 28 درجة، والصغرى 12 درجة. يرجى أخذ الحيطة.
-                    const parts = text.split('|');
-                    if (parts.length === 2) {
-                        const color = parts[0].trim();
-                        const message = parts[1].trim();
-                        warningTextEl.innerText = message;
-                        warningBar.style.borderColor = color;
-                        warningBar.style.backgroundColor = color + '22'; // إضافة شفافية
-                    } else {
-                        // إذا كان الملف يحتوي على نص فقط بدون لون
-                        warningTextEl.innerText = text;
-                    }
-                } else {
-                    // نص افتراضي في حال عدم وجود الملف
-                    warningTextEl.innerText = "لا يوجد تحذير اليوم. يرجى متابعة حالة الطقس.";
-                }
-            } catch (e) {
-                // في حال فشل القراءة (مثلاً عند فتح الملف محلياً)، نعرض نصاً افتراضياً
-                warningTextEl.innerText = "تعذر تحميل التحذير اليومي. يرجى المحاولة لاحقاً.";
-                console.warn("لم يتم العثور على ملف warning.txt، تأكد من رفعه مع باقي الملفات.");
-            }
-        }
+<script>
+// ═══════════════════════════════════════════════════════════
+// ⚡ لا تحتاج تعديل أي شيء هنا - الكود يعمل تلقائياً
+// ═══════════════════════════════════════════════════════════
+const DATA_BASE = "./data/";
+const TMDB_API_KEY = "e29d0794c11eed5d772044b1ad2a2411";
 
-        // ================= دوال الطقس =================
-        function getWeatherInfo(code) {
-            const codes = {
-                0: '☀️ صافٍ', 1: '🌤️ صافٍ غالباً', 2: '⛅ غائم جزئياً', 3: '☁️ غائم',
-                45: '🌫️ ضباب', 48: '🌫️ ضباب متجمد', 51: '🌦️ رذاذ خفيف', 53: '🌦️ رذاذ', 55: '🌧️ رذاذ كثيف',
-                61: '🌧️ مطر خفيف', 63: '🌧️ مطر', 65: '🌧️ مطر غزير', 80: '🌦️ زخات مطر', 81: '🌧️ زخات مطر', 82: '⛈️ زخات غزيرة',
-                95: '⛈️ عاصفة رعدية', 96: '⛈️ عاصفة مع برق', 99: '⛈️ عاصفة شديدة'
-            };
-            return codes[code] || '🌡️ غير معروف';
-        }
+const CATEGORY_FILES = {
+  "الأنمي والمجموعات": "anime.txt",
+  "تركي": "turkish.txt",
+  "عربي": "arabic.txt",
+  "كوري": "korean.txt",
+  "خليجي": "khaleeji.txt",
+  "يمني": "yemeni.txt",
+  "كرتون وأطفال": "cartoon.txt",
+  "أجنبي": "foreign.txt",
+  "أفلام": "movies.txt"
+};
 
-        function getWindDirection(deg) {
-            const dirs = ['شمال', 'شمال شرق', 'شرق', 'جنوب شرق', 'جنوب', 'جنوب غرب', 'غرب', 'شمال غرب'];
-            return dirs[Math.round(deg / 45) % 8];
-        }
+const CATEGORY_ICONS = {"الأنمي والمجموعات":"🎌","تركي":"🇹🇷","عربي":"🕌","كوري":"🇰🇷","خليجي":"🏜️","يمني":"🇾🇪","كرتون وأطفال":"🧸","أجنبي":"🌍","أفلام":"🎬"};
 
-        async function fetchData() {
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code,dew_point_2m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,relative_humidity_2m_max,relative_humidity_2m_min,dew_point_2m_max&timezone=${TIMEZONE}&forecast_days=10&wind_speed_unit=ms`;
-            const response = await fetch(url);
-            if (!response.ok) throw new Error('فشل الاتصال');
-            return await response.json();
-        }
+const GENRE_NAMES = {28:"أكشن",12:"مغامرة",16:"رسوم متحركة",35:"كوميديا",80:"جريمة",99:"وثائقي",18:"دراما",10751:"عائلي",14:"فانتازيا",36:"تاريخي",27:"رعب",10402:"موسيقى",9648:"غموض",10749:"رومانسي",878:"خيال علمي",10770:"فيلم تلفزيوني",53:"إثارة",10752:"حرب",37:"غربي",10759:"أكشن ومغامرة",10762:"أطفال",10763:"أخبار",10764:"واقعي",10765:"خيال علمي وفانتازيا",10766:"درامي",10767:"حوار",10768:"حرب وسياسة"};
 
-        // ================= بناء واجهة الطقس =================
-        function renderCards(data) {
-            const grid = document.getElementById('weatherGrid');
-            const current = data.current;
-            const daily = data.daily;
+const store = {};
+let latestTitles = [];
+let popularTitles = [];
+let currentCategory = null;
+let currentSpecial = null;
+let currentList = [];
+const detailCache = {};
+const genreCache = {};
+let requestToken = 0;
+let currentFilterMode = "name";
+let activeGenre = "";
+let activeLetter = "";
+const CONFIG = { background:"", anime_music:"", latest_music:"", popular_music:"" };
 
-            const todayInfo = getWeatherInfo(daily.weather_code[0]).split(' ');
-            const todayIcon = todayInfo[0];
-            const todayDesc = todayInfo.slice(1).join(' ');
-            const todayHum = Math.round((daily.relative_humidity_2m_max[0] + daily.relative_humidity_2m_min[0]) / 2);
+async function loadConfig() {
+  try {
+    const text = await fetchTxt("config.txt");
+    text.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith("#")) return;
+      const idx = line.indexOf("=");
+      if (idx === -1) return;
+      const key = line.slice(0, idx).trim();
+      const value = line.slice(idx + 1).trim();
+      if (key) CONFIG[key] = value;
+    });
+    if (CONFIG.background) document.documentElement.style.setProperty('--page-bg-image', `url("${CONFIG.background}")`);
+  } catch(e) {}
+}
 
-            const tomInfo = getWeatherInfo(daily.weather_code[1]).split(' ');
-            const tomIcon = tomInfo[0];
-            const tomDesc = tomInfo.slice(1).join(' ');
-            const tomHum = Math.round((daily.relative_humidity_2m_max[1] + daily.relative_humidity_2m_min[1]) / 2);
+let currentAudio = null;
+let isMuted = false;
 
-            grid.innerHTML = `
-                <!-- بطاقة اليوم -->
-                <div class="weather-card">
-                    <div class="card-header"><span class="day-label">اليوم ${todayIcon}</span><span class="day-date">${getFormattedDate(new Date(), true)}</span></div>
-                    <div class="temp-display">
-                        <div class="temp-main">${Math.round(current.temperature_2m)}<span class="unit">°C</span></div>
-                        <div class="temp-range"><span class="min">▼ ${Math.round(daily.temperature_2m_min[0])}°</span><span class="max">▲ ${Math.round(daily.temperature_2m_max[0])}°</span></div>
-                        <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:6px;">${todayDesc}</div>
-                    </div>
-                    <div class="details-grid">
-                        <div class="detail-item"><span class="detail-icon">💨</span><div class="detail-info"><span class="detail-label">الرياح</span><span class="detail-value">${Math.round(daily.wind_speed_10m_max[0])} م/ث ${getWindDirection(daily.wind_direction_10m_dominant[0])}</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">💧</span><div class="detail-info"><span class="detail-label">الرطوبة</span><span class="detail-value">${todayHum}%</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">🌡️</span><div class="detail-info"><span class="detail-label">نقطة الندى</span><span class="detail-value">${Math.round(current.dew_point_2m)}°C</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">🌧️</span><div class="detail-info"><span class="detail-label">احتمال المطر</span><span class="detail-value">${daily.precipitation_probability_max[0] || 0}%</span></div></div>
-                    </div>
-                </div>
-                <!-- بطاقة الغد -->
-                <div class="weather-card">
-                    <div class="card-header"><span class="day-label">غداً ${tomIcon}</span><span class="day-date">${getFormattedDate(new Date(Date.now() + 86400000), true)}</span></div>
-                    <div class="temp-display">
-                        <div class="temp-main">${Math.round(daily.temperature_2m_max[1])}<span class="unit">°C</span></div>
-                        <div class="temp-range"><span class="min">▼ ${Math.round(daily.temperature_2m_min[1])}°</span><span class="max">▲ ${Math.round(daily.temperature_2m_max[1])}°</span></div>
-                        <div style="font-size:0.85rem; color:var(--text-secondary); margin-top:6px;">${tomDesc}</div>
-                    </div>
-                    <div class="details-grid">
-                        <div class="detail-item"><span class="detail-icon">💨</span><div class="detail-info"><span class="detail-label">الرياح</span><span class="detail-value">${Math.round(daily.wind_speed_10m_max[1])} م/ث ${getWindDirection(daily.wind_direction_10m_dominant[1])}</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">💧</span><div class="detail-info"><span class="detail-label">الرطوبة</span><span class="detail-value">${tomHum}%</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">🌡️</span><div class="detail-info"><span class="detail-label">نقطة الندى</span><span class="detail-value">${Math.round(daily.dew_point_2m_max[1])}°C</span></div></div>
-                        <div class="detail-item"><span class="detail-icon">🌧️</span><div class="detail-info"><span class="detail-label">احتمال المطر</span><span class="detail-value">${daily.precipitation_probability_max[1] || 0}%</span></div></div>
-                    </div>
-                </div>
-            `;
-        }
+function playMusic(src) {
+  if (!src) { stopMusic(); return; }
+  if (currentAudio && currentAudio.dataset.src === src && !currentAudio.paused) return;
+  stopMusic();
+  const audio = new Audio(src);
+  audio.dataset.src = src;
+  audio.volume = 0.2;
+  audio.loop = true;
+  audio.play().catch(() => {
+    document.body.addEventListener("click", () => audio.play().catch(()=>{}), { once: true });
+  });
+  currentAudio = audio;
+  document.getElementById("muteBtn").classList.add("visible");
+  document.getElementById("muteBtn").classList.remove("muted");
+  document.getElementById("muteBtn").textContent = "🔊";
+  isMuted = false;
+}
 
-        function renderForecast10Days(data, sourceName) {
-            const list = document.getElementById('forecastList');
-            const daily = data.daily;
-            let html = '';
-            for (let i = 0; i < daily.time.length; i++) {
-                const dateObj = new Date(daily.time[i] + 'T00:00:00');
-                const info = getWeatherInfo(daily.weather_code[i]);
-                html += `
-                    <div class="forecast-row">
-                        <div><div class="f-day">${i === 0 ? 'اليوم' : (i === 1 ? 'غداً' : info.split(' ')[1])}</div><div class="f-date">${getFormattedDate(dateObj, true)}</div></div>
-                        <div class="f-temp">${Math.round(daily.temperature_2m_min[i])}° / ${Math.round(daily.temperature_2m_max[i])}°</div>
-                        <div class="f-rain">💧 ${daily.precipitation_probability_max[i] || 0}%</div>
-                        <div class="f-wind">💨 ${Math.round(daily.wind_speed_10m_max[i])} م/ث ${getWindDirection(daily.wind_direction_10m_dominant[i])}</div>
-                        <div style="text-align:center; font-size:1.2rem;">${info.split(' ')[0]}</div>
-                    </div>`;
-            }
-            list.innerHTML = html;
-            document.getElementById('forecastPanel').style.display = 'block';
-            document.getElementById('forecastTitle').innerText = `توقعات 10 أيام -- ${sourceName}`;
-            document.getElementById('forecastSourceTag').innerText = sourceName;
-        }
+function stopMusic() {
+  if (currentAudio) { currentAudio.pause(); currentAudio.src = ""; currentAudio = null; }
+  document.getElementById("muteBtn").classList.remove("visible");
+}
 
-        async function loadForecast(sourceName) {
-            document.querySelectorAll('.source-btn').forEach(btn => btn.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            document.getElementById('forecastList').innerHTML = '<div class="loading-state"><div class="spinner"></div>جاري التحديث...</div>';
-            try {
-                if (!cachedData) cachedData = await fetchData();
-                renderForecast10Days(cachedData, sourceName);
-            } catch (err) {
-                document.getElementById('forecastList').innerHTML = `<div class="error-state">⚠️ تعذر جلب التوقعات.</div>`;
-            }
-        }
+function toggleMute() {
+  if (!currentAudio) return;
+  isMuted = !isMuted;
+  currentAudio.muted = isMuted;
+  const btn = document.getElementById("muteBtn");
+  btn.textContent = isMuted ? "🔇" : "🔊";
+  btn.classList.toggle("muted", isMuted);
+}
 
-        // ================= المقرانات الزراعية =================
-        // ملاحظة: حساب المقرانات يعتمد على التقويم الهجري (اقتران القمر بالثريا في الليالي الفردية: 7، 9، 11، 13، 15، 17)
-        // هذه الدالة تحسب المقرانة القادمة بناءً على التاريخ الهجري الحالي
-        function calculateMaqran() {
-            const content = document.getElementById('maqranContent');
-            
-            // الحصول على التاريخ الهجري الحالي
-            const today = new Date();
-            const hijriDate = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
-                day: 'numeric', month: 'long', year: 'numeric'
-            }).format(today);
-            
-            // استخراج اليوم الهجري (تقريبي)
-            const hijriDay = parseInt(new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric' }).format(today));
-            
-            // أسماء المقرانات الشائعة في اليمن (مرتبطة بأرقام الليالي الفردية)
-            const maqranNames = {
-                7: { name: "قران السبع", desc: "اقتران القمر مع الثريا في الليلة السابعة. من مواسم الأمطار في اليمن، ويستمر 28 يوماً." },
-                9: { name: "قران التسع", desc: "اقتران القمر مع الثريا في الليلة التاسعة. من مواسم الزراعة والحصاد الهامة." },
-                11: { name: "قران الحادي عشر", desc: "اقتران القمر مع الثريا في الليلة الحادية عشرة. يتزامن غالباً مع شهر يناير." },
-                13: { name: "قران الثالث عشر", desc: "اقتران القمر مع الثريا في الليلة الثالثة عشرة." },
-                15: { name: "قران الخمسة عشر", desc: "اقتران القمر مع الثريا في ليلة اكتمال القمر (منتصف الشهر)." },
-                17: { name: "قران السابع عشر", desc: "أول قران في الشتاء بحسب أعراف المزارعين اليمنيين." }
-            };
+async function fetchTxt(fileName) {
+  const res = await fetch(DATA_BASE + fileName + "?t=" + Date.now());
+  if (!res.ok) throw new Error("فشل: " + fileName);
+  return await res.text();
+}
 
-            // إيجاد أقرب مقرانة قادمة (نبحث في الأيام الفردية المتبقية من الشهر الهجري)
-            let nextMaqranDay = null;
-            let daysRemaining = 0;
-            
-            const possibleDays = [7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27];
-            
-            for (let day of possibleDays) {
-                if (day >= hijriDay) {
-                    nextMaqranDay = day;
-                    daysRemaining = day - hijriDay;
-                    break;
-                }
-            }
-            
-            // إذا لم نجد في هذا الشهر، نأخذ أول يوم من الشهر القادم
-            if (!nextMaqranDay) {
-                nextMaqranDay = 7; // أول مقرانة في الشهر القادم
-                // حساب الأيام المتبقية في الشهر الحالي (تقريبي 29 يوماً)
-                daysRemaining = (29 - hijriDay) + 7; 
-            }
+function parseTitleList(text) {
+  return text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith("#"));
+}
 
-            const maqranInfo = maqranNames[nextMaqranDay] || { name: `قران ${nextMaqranDay}`, desc: "اقتران القمر مع الثريا." };
-            
-            // الأشهر الزراعية اليمنية (مبسطة)
-            const yemeniMonths = [
-                { name: "ذو الثابة", season: "الربيع", desc: "بداية السنة الزراعية اليمنية" },
-                { name: "ذو الحلة", season: "الربيع", desc: "موسم زراعة الذرة" },
-                { name: "ذو معون", season: "الربيع", desc: "موسم خصب" },
-                { name: "ذو علان", season: "الصيف", desc: "موسم الحصاد" },
-                { name: "ذو الصراب", season: "الصيف", desc: "موسم الأمطار" }
-            ];
+async function loadAllData() {
+  const promises = Object.entries(CATEGORY_FILES).map(async ([cat, file]) => {
+    try { store[cat] = parseTitleList(await fetchTxt(file)); }
+    catch(e) { store[cat] = []; }
+  });
+  const extras = [
+    fetchTxt("latest.txt").then(t => latestTitles = parseTitleList(t)).catch(()=>{}),
+    fetchTxt("popular.txt").then(t => popularTitles = parseTitleList(t)).catch(()=>{})
+  ];
+  await Promise.all([...promises, ...extras]);
+}
 
-            content.innerHTML = `
-                <div class="maqran-item">
-                    <h4>📅 اليوم: ${hijriDate}</h4>
-                    <p>اليوم الهجري: <span class="highlight">${hijriDay}</span></p>
-                </div>
-                
-                <div class="maqran-item" style="border-right-color: var(--accent-cyan);">
-                    <h4>🌙 المقرانة القادمة: ${maqranInfo.name}</h4>
-                    <p>${maqranInfo.desc}</p>
-                    <p>الليلة: <span class="highlight">${nextMaqranDay}</span> من الشهر الهجري</p>
-                    <p>متبقي: <span class="highlight" style="color: var(--accent-gold); font-size: 1.1rem;">${daysRemaining} أيام</span></p>
-                </div>
+function cleanQuery(title) {
+  return title.replace(/^(01|02|03|04|05|06|07|08|09|10|\d+)\s*مسلسل\s*-\s*/i,"").replace(/مسلسل|انمي|مترجم|مدبلج/g,"").replace(/الموسم\s*(الأول|الاول|الثاني|الثالث|الرابع|الخامس|السادس|السابع)/g,"").replace(/الجزء\s*(الأول|الاول|الثاني|الثالث|الرابع|الخامس)/g,"").replace(/\b(SEASON|SESONE)\s*\d+\b/ig,"").replace(/\bS\d+\b/ig,"").replace(/\(.*?\)/g,"").replace(/[\+\-_]+/g," ").replace(/\s{2,}/g," ").trim();
+}
 
-                <div class="maqran-item" style="border-right-color: var(--accent-blue);">
-                    <h4>🌾 الأشهر الزراعية اليمنية</h4>
-                    ${yemeniMonths.map(m => `<p>• <span class="highlight">${m.name}</span> (${m.season}) - ${m.desc}</p>`).join('')}
-                </div>
-                
-                <p style="font-size:0.75rem; color:var(--text-secondary); text-align:center; margin-top:10px;">
-                    * المقرانة هي اقتران القمر مع الثريا، وتتكرر كل 27-28 يوماً.
-                </p>
-            `;
-        }
+function englishPart(raw) {
+  const m = raw.match(/[A-Za-z][A-Za-z0-9 .:'&×!?\/-]{2,}/g);
+  if (!m) return "";
+  return m.sort((a,b) => b.length - a.length)[0].trim();
+}
 
-        // ================= الأبراج الفلكية =================
-        function renderZodiac() {
-            const content = document.getElementById('zodiacContent');
-            const today = new Date();
-            const month = today.getMonth() + 1;
-            const day = today.getDate();
-            
-            const zodiacs = [
-                { name: "الحمل", icon: "♈", start: [3, 21], end: [4, 19] },
-                { name: "الثور", icon: "♉", start: [4, 20], end: [5, 20] },
-                { name: "الجوزاء", icon: "♊", start: [5, 21], end: [6, 20] },
-                { name: "السرطان", icon: "♋", start: [6, 21], end: [7, 22] },
-                { name: "الأسد", icon: "♌", start: [7, 23], end: [8, 22] },
-                { name: "العذراء", icon: "♍", start: [8, 23], end: [9, 22] },
-                { name: "الميزان", icon: "♎", start: [9, 23], end: [10, 22] },
-                { name: "العقرب", icon: "♏", start: [10, 23], end: [11, 21] },
-                { name: "القوس", icon: "♐", start: [11, 22], end: [12, 21] },
-                { name: "الجدي", icon: "♑", start: [12, 22], end: [1, 19] },
-                { name: "الدلو", icon: "♒", start: [1, 20], end: [2, 18] },
-                { name: "الحوت", icon: "♓", start: [2, 19], end: [3, 20] }
-            ];
+function buildQueries(title) {
+  const cleaned = cleanQuery(title);
+  const en = englishPart(title);
+  const qs = [];
+  if (en && en.length >= 3) qs.push(en);
+  if (cleaned && !qs.includes(cleaned)) qs.push(cleaned);
+  if (title && !qs.includes(title)) qs.push(title);
+  return qs.slice(0, 3);
+}
 
-            let currentZodiac = zodiacs.find(z => {
-                const [sm, sd] = z.start;
-                const [em, ed] = z.end;
-                if (sm <= em) return (month === sm && day >= sd) || (month === em && day <= ed);
-                else return (month === sm && day >= sd) || (month === em && day <= ed);
-            }) || zodiacs[0];
+function placeholderData() {
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="185" height="278"><rect width="100%" height="100%" fill="#17213a"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" fill="#64748b" font-size="22" font-family="Arial">🎬</text></svg>`);
+}
 
-            content.innerHTML = zodiacs.map(z => `
-                <div class="zodiac-card" style="${z.name === currentZodiac.name ? 'border-color: var(--accent-cyan); background: var(--bg-card-hover);' : ''}">
-                    <span class="z-icon">${z.icon}</span>
-                    <span class="z-name">${z.name}</span>
-                    <span class="z-date">${z.start[0]}/${z.start[1]} - ${z.end[0]}/${z.end[1]}</span>
-                </div>
-            `).join('');
-        }
+function hasArabic(text) { return /[\u0600-\u06FF]/.test(text || ""); }
 
-        // ================= النوافذ المنبثقة =================
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-            if (id === 'maqranModal') calculateMaqran();
-            if (id === 'zodiacModal') renderZodiac();
-        }
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-        // إغلاق النافذة عند النقر خارجها
-        window.onclick = function(event) {
-            if (event.target.classList.contains('modal-overlay')) {
-                event.target.classList.remove('active');
-            }
-        }
+async function translateToArabic(text) {
+  if (!text) return "";
+  if (hasArabic(text)) return text;
+  try {
+    const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ar&dt=t&q=" + encodeURIComponent(text);
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && Array.isArray(data[0])) return data[0].map(p => p[0]).join("");
+    }
+  } catch(e) {}
+  try {
+    const url = "https://api.mymemory.translated.net/get?q=" + encodeURIComponent(text.slice(0, 500)) + "&langpair=en|ar";
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data?.responseData?.translatedText) return data.responseData.translatedText;
+  } catch(e) {}
+  return text;
+}
 
-        // ================= التشغيل الأولي =================
-        async function init() {
-            document.getElementById('currentDate').innerText = getFormattedDate(new Date());
-            loadDailyWarning(); // تحميل التحذير
+async function fetchDetails(title) {
+  const key = title.toLowerCase();
+  if (detailCache[key]) return detailCache[key];
+  const queries = buildQueries(title);
+  let match = null, type = null;
 
-            try {
-                cachedData = await fetchData();
-                renderCards(cachedData);
-                renderForecast10Days(cachedData, 'Open-Meteo');
-            } catch (err) {
-                document.getElementById('weatherGrid').innerHTML = `
-                    <div class="error-state" style="grid-column:1/-1;">
-                        ⚠️ فشل الاتصال بخادم الطقس.<br>تأكد من الإنترنت أو أعد تحميل الصفحة.
-                    </div>
-                `;
-            }
-        }
-        window.onload = init;
-    </script>
+  for (const q of queries) {
+    try {
+      const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&language=ar-SA&include_adult=false&query=${encodeURIComponent(q)}`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const results = (data.results || []).filter(x => (x.media_type === "tv" || x.media_type === "movie") && x.poster_path);
+      if (!results.length) continue;
+      results.sort((a,b) => (b.popularity||0) - (a.popularity||0));
+      match = results[0];
+      type = match.media_type;
+      break;
+    } catch(e) {}
+  }
+
+  if (match) {
+    let overview = match.overview || "";
+    if (!hasArabic(overview)) {
+      try {
+        const url = `https://api.themoviedb.org/3/${type}/${match.id}?api_key=${TMDB_API_KEY}&language=en-US`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.overview && data.overview.length > overview.length) overview = data.overview;
+      } catch(e) {}
+    }
+    if (overview && !hasArabic(overview)) overview = await translateToArabic(overview);
+    const genres = (match.genre_ids || []).map(id => GENRE_NAMES[id]).filter(Boolean);
+    const info = {
+      poster: `https://image.tmdb.org/t/p/w300${match.poster_path}`,
+      overview: overview || "لا يتوفر وصف لهذا العمل حالياً.",
+      rating: match.vote_average ? Number(match.vote_average).toFixed(1) : "--",
+      genres: genres,
+      year: (match.release_date || match.first_air_date || "").split("-")[0],
+      type: type
+    };
+    detailCache[key] = info;
+    genreCache[title] = genres;
+    return info;
+  }
+
+  for (const q of queries) {
+    try {
+      const url = `https://api.tvmaze.com/search/shows?q=${encodeURIComponent(q)}`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const show = data[0]?.show;
+      if (!show) continue;
+      let overview = show.summary ? show.summary.replace(/<[^>]*>/g, "").trim() : "";
+      if (overview && !hasArabic(overview)) overview = await translateToArabic(overview);
+      const info = {
+        poster: show.image?.original || show.image?.medium || placeholderData(),
+        overview: overview || "لا يتوفر وصف لهذا العمل حالياً.",
+        rating: show.rating?.average ? Number(show.rating.average).toFixed(1) : "--",
+        genres: show.genres || [],
+        year: (show.premiered || "").split("-")[0],
+        type: "tv"
+      };
+      detailCache[key] = info;
+      genreCache[title] = info.genres;
+      return info;
+    } catch(e) {}
+  }
+
+  const fallback = { poster: placeholderData(), overview: "تعذر جلب تفاصيل هذا العمل من الإنترنت.", rating: "--", genres: [], year: "", type: null };
+  detailCache[key] = fallback;
+  genreCache[title] = [];
+  return fallback;
+}
+
+function renderCards(titles, categoryLabel) {
+  const grid = document.getElementById("contentGrid");
+  grid.innerHTML = "";
+  if (!titles.length) {
+    grid.innerHTML = `<div class="no-results">لا توجد عناصر لعرضها.</div>`;
+    return;
+  }
+  const token = ++requestToken;
+  titles.forEach((title, idx) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    const imgId = `img-${token}-${idx}`;
+    const rateId = `rate-${token}-${idx}`;
+    card.innerHTML = `
+      <div class="poster-wrapper">
+        <span class="badge-type">${categoryLabel}</span>
+        <img src="${placeholderData()}" class="poster-img is-loading" id="${imgId}" alt="${title}" loading="lazy" decoding="async">
+        <div class="rating-tag" id="${rateId}">⭐ --</div>
+      </div>
+      <div class="card-info"><div class="card-title">${title}</div></div>
+    `;
+    card.onclick = () => openDetails(title, categoryLabel);
+    grid.appendChild(card);
+    loadCardDetails(title, imgId, rateId);
+  });
+}
+
+async function loadCardDetails(title, imgId, rateId) {
+  const info = await fetchDetails(title);
+  const img = document.getElementById(imgId);
+  const rate = document.getElementById(rateId);
+  if (img) {
+    img.onload = () => { img.classList.remove("is-loading"); img.classList.add("loaded"); };
+    img.onerror = () => { img.src = placeholderData(); img.classList.remove("is-loading"); };
+    img.src = info.poster;
+  }
+  if (rate) rate.innerHTML = `⭐ ${info.rating}`;
+  if (currentFilterMode === "genre") renderGenrePanel();
+}
+
+async function preloadDetails(items, limit = 6) {
+  const queue = items.slice();
+  const workers = Array(limit).fill(null).map(async () => {
+    while (queue.length) {
+      const t = queue.shift();
+      if (!t) break;
+      try { await fetchDetails(t); } catch(e) {}
+    }
+  });
+  await Promise.all(workers);
+}
+
+function renderCategories() {
+  const box = document.getElementById("categoryGrid");
+  box.innerHTML = "";
+  Object.keys(store).forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "category-card";
+    btn.innerHTML = `<span class="category-icon">${CATEGORY_ICONS[cat] || "📚"}</span><span class="category-name">${cat}</span><span class="category-count">${store[cat].length} عمل</span>`;
+    btn.onclick = () => openCategory(cat);
+    box.appendChild(btn);
+  });
+}
+
+function openCategory(cat) {
+  currentCategory = cat; currentSpecial = null; currentList = store[cat] || [];
+  currentFilterMode = "name"; activeGenre = ""; activeLetter = "";
+  document.getElementById("homeView").classList.add("home-hidden");
+  document.getElementById("libraryView").classList.remove("home-hidden");
+  document.getElementById("libraryTitle").textContent = `${CATEGORY_ICONS[cat] || ""} ${cat}`;
+  document.getElementById("searchInput").value = "";
+  resetFilterUI();
+  if (cat === "الأنمي والمجموعات") playMusic(CONFIG.anime_music);
+  else stopMusic();
+  renderCards(currentList, cat);
+  preloadDetails(currentList);
+}
+
+function showSpecial(type) {
+  currentCategory = null; currentSpecial = type;
+  currentList = type === "latest" ? latestTitles : popularTitles;
+  currentFilterMode = "name"; activeGenre = ""; activeLetter = "";
+  document.getElementById("homeView").classList.add("home-hidden");
+  document.getElementById("libraryView").classList.remove("home-hidden");
+  const label = type === "latest" ? "🆕 أحدث الإضافات" : "🔥 الأكثر مشاهدة";
+  document.getElementById("libraryTitle").textContent = label;
+  document.getElementById("searchInput").value = "";
+  resetFilterUI();
+  playMusic(type === "latest" ? CONFIG.latest_music : CONFIG.popular_music);
+  renderCards(currentList, type === "latest" ? "جديد" : "مشهور");
+  preloadDetails(currentList);
+}
+
+function goHome() {
+  currentCategory = null; currentSpecial = null; currentList = [];
+  currentFilterMode = "name"; activeGenre = ""; activeLetter = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("libraryView").classList.add("home-hidden");
+  document.getElementById("homeView").classList.remove("home-hidden");
+  stopMusic();
+}
+
+function resetFilterUI() {
+  document.querySelectorAll(".filter-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === "name"));
+  document.getElementById("genrePanel").classList.add("hidden");
+  document.getElementById("letterPanel").classList.add("hidden");
+}
+
+function setFilterMode(mode) {
+  currentFilterMode = mode; activeGenre = ""; activeLetter = "";
+  document.querySelectorAll(".filter-tab").forEach(t => t.classList.toggle("active", t.dataset.mode === mode));
+  const genrePanel = document.getElementById("genrePanel");
+  const letterPanel = document.getElementById("letterPanel");
+  genrePanel.classList.add("hidden"); letterPanel.classList.add("hidden");
+  if (mode === "name") applyNameFilter();
+  else if (mode === "genre") { renderGenrePanel(); genrePanel.classList.remove("hidden"); renderCards(currentList, currentCategory || "قائمة"); }
+  else if (mode === "letter") { renderLetterPanel(); letterPanel.classList.remove("hidden"); renderCards(currentList, currentCategory || "قائمة"); }
+}
+
+function renderGenrePanel() {
+  const panel = document.getElementById("genrePanel");
+  const allGenres = new Set();
+  currentList.forEach(t => (genreCache[t] || []).forEach(g => allGenres.add(g)));
+  if (!allGenres.size) {
+    panel.innerHTML = `<span style="color:var(--text-muted);font-size:.75rem;">جاري تحميل الأنواع... اضغط مرة أخرى بعد لحظات</span>`;
+    return;
+  }
+  panel.innerHTML = "";
+  Array.from(allGenres).sort().forEach(g => {
+    const btn = document.createElement("button");
+    btn.className = "filter-chip" + (activeGenre === g ? " active" : "");
+    btn.textContent = g;
+    btn.onclick = () => { activeGenre = activeGenre === g ? "" : g; applyGenreFilter(); };
+    panel.appendChild(btn);
+  });
+}
+
+function renderLetterPanel() {
+  const panel = document.getElementById("letterPanel");
+  const letters = new Set();
+  currentList.forEach(t => {
+    const first = t.charAt(0);
+    if (/[A-Za-z]/.test(first)) letters.add(first.toUpperCase());
+    else if (/[\u0600-\u06FF]/.test(first)) letters.add(first);
+  });
+  panel.innerHTML = "";
+  Array.from(letters).sort().forEach(l => {
+    const btn = document.createElement("button");
+    btn.className = "filter-chip" + (activeLetter === l ? " active" : "");
+    btn.textContent = l;
+    btn.onclick = () => { activeLetter = activeLetter === l ? "" : l; applyLetterFilter(); };
+    panel.appendChild(btn);
+  });
+}
+
+function applyGenreFilter() {
+  document.querySelectorAll("#genrePanel .filter-chip").forEach(b => b.classList.toggle("active", b.textContent === activeGenre));
+  let list = currentList;
+  if (activeGenre) list = currentList.filter(t => (genreCache[t] || []).includes(activeGenre));
+  renderCards(list, currentCategory || "بحث");
+}
+
+function applyLetterFilter() {
+  document.querySelectorAll("#letterPanel .filter-chip").forEach(b => b.classList.toggle("active", b.textContent === activeLetter));
+  let list = currentList;
+  if (activeLetter) list = currentList.filter(t => {
+    const first = t.charAt(0);
+    return first.toUpperCase() === activeLetter || first === activeLetter;
+  });
+  renderCards(list, currentCategory || "بحث");
+}
+
+function onSearchInput() {
+  if (currentFilterMode !== "name") setFilterMode("name");
+  applyNameFilter();
+}
+
+function applyNameFilter() {
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+  const grid = document.getElementById("contentGrid");
+  if (!currentCategory && !currentSpecial) {
+    if (!q) { grid.innerHTML = ""; return; }
+    const results = [];
+    Object.keys(store).forEach(cat => store[cat].forEach(t => { if (t.toLowerCase().includes(q)) results.push({ title: t, cat: cat }); }));
+    document.getElementById("homeView").classList.add("home-hidden");
+    document.getElementById("libraryView").classList.remove("home-hidden");
+    document.getElementById("libraryTitle").textContent = `نتائج البحث عن "${q}"`;
+    stopMusic();
+    if (!results.length) { grid.innerHTML = `<div class="no-results">لا توجد نتائج لـ "${q}"</div>`; return; }
+    grid.innerHTML = "";
+    const token = ++requestToken;
+    results.forEach(({title, cat}, idx) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const imgId = `img-${token}-${idx}`;
+      const rateId = `rate-${token}-${idx}`;
+      card.innerHTML = `<div class="poster-wrapper"><span class="badge-type">${cat}</span><img src="${placeholderData()}" class="poster-img is-loading" id="${imgId}" alt="${title}" loading="lazy"><div class="rating-tag" id="${rateId}">⭐ --</div></div><div class="card-info"><div class="card-title">${title}</div></div>`;
+      card.onclick = () => openDetails(title, cat);
+      grid.appendChild(card);
+      loadCardDetails(title, imgId, rateId);
+    });
+    return;
+  }
+  if (!q) { renderCards(currentList, currentCategory || "قائمة"); return; }
+  const filtered = currentList.filter(t => t.toLowerCase().includes(q));
+  renderCards(filtered, currentCategory || "قائمة");
+}
+
+async function openDetails(title, categoryLabel) {
+  const modal = document.getElementById("modalOverlay");
+  document.getElementById("modalTitle").innerText = title;
+  document.getElementById("modalCategory").innerText = categoryLabel;
+  document.getElementById("modalOverview").innerText = "جاري تحميل التفاصيل...";
+  document.getElementById("modalRating").innerText = "⭐ --";
+  document.getElementById("modalYear").innerText = "";
+  document.getElementById("modalGenres").innerText = "";
+  document.getElementById("modalPoster").src = placeholderData();
+  modal.classList.add("active");
+  const info = await fetchDetails(title);
+  document.getElementById("modalPoster").src = info.poster;
+  document.getElementById("modalRating").innerText = `⭐ ${info.rating} / 10`;
+  document.getElementById("modalYear").innerText = info.year ? `سنة: ${info.year}` : "";
+  document.getElementById("modalGenres").innerText = info.genres.length ? `الأنواع: ${info.genres.join("، ")}` : "";
+  document.getElementById("modalOverview").innerText = info.overview;
+}
+
+function closeModal(event) {
+  if (event === null || event.target.id === "modalOverlay") document.getElementById("modalOverlay").classList.remove("active");
+}
+
+function toggleContact() { document.getElementById("contactPanel").classList.toggle("home-hidden"); }
+function toggleHours() { document.getElementById("hoursPanel").classList.toggle("home-hidden"); }
+
+(async function init() {
+  await loadConfig();
+  await loadAllData();
+  renderCategories();
+})();
+</script>
 </body>
 </html>

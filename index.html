@@ -218,27 +218,52 @@ async function loadConfig() {
 let currentAudio = null;
 let isMuted = false;
 
-function playMusic(src) {
+// دالة تشغيل الصوت المطورة (تحميل الملف بالكامل كـ Blob لمنع التقطيع)
+async function playMusic(src) {
   if (!src) { stopMusic(); return; }
   if (currentAudio && currentAudio.dataset.src === src && !currentAudio.paused) return;
   stopMusic();
-  const audio = new Audio(src);
-  audio.dataset.src = src;
-  audio.volume = 0.2;
-  audio.loop = true;
-  audio.preload = "auto"; // إجبار المتصفح على تحميل الملف بالكامل لمنع التقطيع
-  
-  const playPromise = audio.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      // في حال منع المتصفح التشغيل التلقائي، يبدأ عند أول ضغطة
-      document.body.addEventListener("click", () => {
-        audio.play().catch(()=>{});
-      }, { once: true });
+
+  try {
+    // إجبار المتصفح على سحب الملف بالكامل كملف (Blob) قبل تشغيله
+    const res = await fetch(src);
+    if (!res.ok) throw new Error("فشل تحميل الصوت");
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const audio = new Audio();
+    audio.dataset.src = src;
+    audio.volume = 0.2;
+    audio.preload = "auto";
+    audio.src = blobUrl;
+
+    // بديل أكثر أماناً لخاصية loop
+    audio.addEventListener('ended', () => {
+      audio.currentTime = 0;
+      audio.play().catch(()=>{});
     });
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        document.body.addEventListener("click", () => {
+          audio.play().catch(()=>{});
+        }, { once: true });
+      });
+    }
+
+    currentAudio = audio;
+  } catch (error) {
+    console.warn("تم استخدام التشغيل المباشر بسبب مشكلة في الشبكة أو CORS:", error);
+    // في حال فشل التحميل المسبق، يرجع للطريقة العادية
+    const audio = new Audio(src);
+    audio.dataset.src = src;
+    audio.volume = 0.2;
+    audio.loop = true;
+    audio.play().catch(()=>{});
+    currentAudio = audio;
   }
-  
-  currentAudio = audio;
+
   document.getElementById("muteBtn").classList.add("visible");
   document.getElementById("muteBtn").classList.remove("muted");
   document.getElementById("muteBtn").textContent = "🔊";
@@ -246,7 +271,14 @@ function playMusic(src) {
 }
 
 function stopMusic() {
-  if (currentAudio) { currentAudio.pause(); currentAudio.src = ""; currentAudio = null; }
+  if (currentAudio) { 
+    currentAudio.pause(); 
+    if(currentAudio.src.startsWith('blob:')) {
+      URL.revokeObjectURL(currentAudio.src); // تنظيف الذاكرة
+    }
+    currentAudio.src = ""; 
+    currentAudio = null; 
+  }
   document.getElementById("muteBtn").classList.remove("visible");
 }
 

@@ -166,9 +166,6 @@ footer{text-align:center;padding:1.5rem;font-size:.8rem;color:var(--text-muted);
 <footer>جميع الحقوق محفوظة &copy; 2026 - مكتبة شاهد VIP</footer>
 
 <script>
-// ═══════════════════════════════════════════════════════════
-// ⚡ لا تحتاج تعديل أي شيء هنا - الكود يعمل تلقائياً
-// ═══════════════════════════════════════════════════════════
 const DATA_BASE = "./data/";
 const TMDB_API_KEY = "e29d0794c11eed5d772044b1ad2a2411";
 
@@ -229,9 +226,18 @@ function playMusic(src) {
   audio.dataset.src = src;
   audio.volume = 0.2;
   audio.loop = true;
-  audio.play().catch(() => {
-    document.body.addEventListener("click", () => audio.play().catch(()=>{}), { once: true });
-  });
+  audio.preload = "auto"; // إجبار المتصفح على تحميل الملف بالكامل لمنع التقطيع
+  
+  const playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // في حال منع المتصفح التشغيل التلقائي، يبدأ عند أول ضغطة
+      document.body.addEventListener("click", () => {
+        audio.play().catch(()=>{});
+      }, { once: true });
+    });
+  }
+  
   currentAudio = audio;
   document.getElementById("muteBtn").classList.add("visible");
   document.getElementById("muteBtn").classList.remove("muted");

@@ -1,2 +1,2 @@
- latest_music=https://u.pone.rs/dlhwtcic.mp3
-popular_music=https://u.pone.rs/dlhwtcic.mp3
+ latest_music=https://u.pone.rs/txkhdjiq.mp3
+popular_music=https://u.pone.rs/txkhdjiq.mp3

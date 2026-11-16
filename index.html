@@ -589,42 +589,66 @@ async function fetchDetails(title) {
   return fallback;
 }
 
-// ====== دالة السلايدر الجديد (صورة واحدة تتبدل) ======
+// ====== سلايدر عشوائي من جميع أقسام المكتبة ======
 async function initHeroSlider() {
   const container = document.getElementById('heroSlider');
-  if (!popularTitles.length) return;
-  
+  if (!container) return;
+
+  // نجمع المسلسلات والأفلام من ملفات جميع الأقسام، وليس من قائمة الأكثر مشاهدة.
+  const allItems = [];
+  const seen = new Set();
+  Object.entries(store).forEach(([category, titles]) => {
+    (titles || []).forEach(title => {
+      const cleanTitle = String(title || '').trim();
+      const key = cleanTitle.toLocaleLowerCase();
+      if (cleanTitle && !seen.has(key)) {
+        seen.add(key);
+        allItems.push({ title: cleanTitle, category });
+      }
+    });
+  });
+
+  if (!allItems.length) {
+    container.style.display = 'none';
+    return;
+  }
+
+  // خلط القائمة بالكامل ثم اختيار مجموعة مختلفة عشوائياً عند كل فتح للموقع.
+  for (let i = allItems.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allItems[i], allItems[j]] = [allItems[j], allItems[i]];
+  }
+  const items = allItems.slice(0, Math.min(8, allItems.length));
+
   container.style.display = 'block';
-  container.innerHTML = '';
+  container.innerHTML = '<div class="hero-content"><p class="hero-desc">جاري تجهيز اختيارات عشوائية من مكتبتك...</p></div>';
+  currentHeroSlide = 0;
 
-  const items = popularTitles.slice(0, 7); // نجلب أول 7 مسلسلات
+  // نحمل تفاصيل الأعمال المختارة بالتوازي حتى لا يتأخر ظهور السلايدر.
+  const prepared = await Promise.all(items.map(async item => ({
+    ...item,
+    info: await fetchDetails(item.title)
+  })));
+
   let slideHTML = '';
-  let dotsHTML = `<div class="hero-dots">`;
-
-  for (let i = 0; i < items.length; i++) {
-    const title = items[i];
-    const info = await fetchDetails(title);
-    const imgUrl = info.backdrop || info.poster;
-    
-    // إنشاء سلايد لكل مسلسل
+  let dotsHTML = '<div class="hero-dots">';
+  prepared.forEach((item, i) => {
+    const safeTitle = item.title.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ');
+    const safeCategory = item.category.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ');
+    const imgUrl = item.info.backdrop || item.info.poster;
     slideHTML += `
       <div class="hero-slide ${i === 0 ? 'active' : ''}" style="background-image: url('${imgUrl}')">
         <div class="hero-content">
-          <h2 class="hero-title">${title}</h2>
-          <p class="hero-desc">${info.overview}</p>
-          <button class="hero-btn" onclick="openDetails('${title}', 'الأكثر مشاهدة')">التفاصيل</button>
+          <h2 class="hero-title">${item.title}</h2>
+          <p class="hero-desc">${item.info.overview}</p>
+          <button class="hero-btn" onclick="openDetails('${safeTitle}', '${safeCategory}')">التفاصيل</button>
         </div>
-      </div>
-    `;
-    
-    // إنشاء النقاط السفلية
+      </div>`;
     dotsHTML += `<div class="hero-dot ${i === 0 ? 'active' : ''}" onclick="goToHeroSlide(${i})"></div>`;
-  }
-  
-  dotsHTML += `</div>`;
+  });
+  dotsHTML += '</div>';
   container.innerHTML = slideHTML + dotsHTML;
 
-  // بدء التبديل التلقائي
   if (heroSlideInterval) clearInterval(heroSlideInterval);
   heroSlideInterval = setInterval(nextHeroSlide, 5000);
 }
